@@ -1,31 +1,34 @@
 /**
- * 数据库模块 — 用 SQLite 存卡片
- * SQLite 是一个轻量数据库，数据存在一个文件里，不需要装数据库软件
+ * 数据库模块 — 用 JSON 文件存卡片
+ * 简单可靠，不需要编译原生模块，云端部署兼容性好
  */
-const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 
-// 数据库文件存在 data 目录
-const DB_PATH = path.join(__dirname, 'data', 'shiguang.db');
-const db = new Database(DB_PATH);
+const DATA_FILE = path.join(__dirname, 'data', 'cards.json');
 
-// 开启 WAL 模式（写入更快，读写可以并发）
-db.pragma('journal_mode = WAL');
+// 确保 data 目录和文件存在
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, '[]', 'utf-8');
+}
 
-// 建表（如果不存在）
-db.exec(`
-  CREATE TABLE IF NOT EXISTS cards (
-    id TEXT PRIMARY KEY,
-    front TEXT NOT NULL,
-    back TEXT NOT NULL,
-    tags TEXT DEFAULT '[]',
-    created TEXT NOT NULL,
-    nextReview TEXT NOT NULL,
-    interval INTEGER DEFAULT 0,
-    ease REAL DEFAULT 2.5,
-    repetitions INTEGER DEFAULT 0,
-    source TEXT DEFAULT 'manual'
-  )
-`);
+/** 读取所有卡片 */
+function readCards() {
+  try {
+    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
 
-module.exports = db;
+/** 写入卡片 */
+function writeCards(cards) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(cards, null, 2), 'utf-8');
+}
+
+module.exports = { readCards, writeCards };
